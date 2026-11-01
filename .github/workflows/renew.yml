@@ -5,13 +5,18 @@ on:
   # 每天监测一次 UTC 02:00 (北京时间 10:00)。每天都跑,到期即续,避免错过续期窗口。
   - cron: '0 2 * * *'
   workflow_dispatch: # 允许手动触发
+    inputs:
+      force_keepalive:
+        description: '立即提交一次防停用记录(测试用)'
+        type: boolean
+        default: false
 
 jobs:
   Renew-Katabump:
     runs-on: ubuntu-latest
     permissions:
       actions: write  
-      contents: read
+      contents: write  # 防停用步骤需要提交代码
     
     steps:
     - uses: actions/checkout@v6
@@ -45,6 +50,28 @@ jobs:
       run: |
         xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
           python3 app.py
+
+    - name: 💓 防止仓库 60 天无活动导致定时任务被停用
+      if: always()
+      continue-on-error: true
+      env:
+        FORCE_KEEPALIVE: ${{ inputs.force_keepalive }}
+      run: |
+        last=$(git log -1 --format=%ct)
+        now=$(date +%s)
+        days=$(( (now - last) / 86400 ))
+        echo "距上次提交 ${days} 天"
+        if [ "$days" -ge 30 ] || [ "$FORCE_KEEPALIVE" = "true" ]; then
+          date -u '+%Y-%m-%d %H:%M:%S UTC' > .github/keepalive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive
+          git commit -m "chore: keepalive $(date -u +%F)"
+          git push
+          echo "✅ 已提交防停用记录"
+        else
+          echo "未满 30 天，无需提交"
+        fi
         
     - name: 🧹 清理旧的工作流运行记录
       if: always()
