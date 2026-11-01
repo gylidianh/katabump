@@ -28,7 +28,7 @@ def load_accounts():
     accounts = []
     if USERS_JSON:
         try:
-            data = _json.loads(USERS_JSON)
+            data = _json.loads(USERS_JSON.lstrip("\ufeff").strip())
             for item in data:
                 if not isinstance(item, dict):
                     continue
