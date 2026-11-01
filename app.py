@@ -41,9 +41,10 @@ def load_accounts():
             print(f"✅ 从 USERS_JSON 加载 {len(accounts)} 个账号")
         except Exception as e:
             print(f"⚠️ USERS_JSON 解析失败: {e}")
-    if not accounts and EMAIL and PASSWORD:
-        accounts.append({"email": EMAIL, "password": PASSWORD})
-        print("✅ 使用单账号环境变量 (KATABUMP_EMAIL/KATABUMP_PASSWORD)")
+    # 单账号环境变量与 USERS_JSON 合并(去重), 两者可同时生效
+    if EMAIL and PASSWORD and EMAIL.strip().lower() not in [a["email"].lower() for a in accounts]:
+        accounts.append({"email": EMAIL.strip(), "password": PASSWORD.strip()})
+        print("✅ 已加入单账号环境变量 (KATABUMP_EMAIL/KATABUMP_PASSWORD)")
     return accounts
 
 #  Telegram 推送模块
